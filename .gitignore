@@ -1,0 +1,7 @@
+models/*
+data/*
+*.swp
+embeds/
+logs/*
+results/*
+mallet_temp
