@@ -10,12 +10,13 @@ import os, sys
 import nltk.data
 import string
 import locale
-locale.setlocale(locale.LC_ALL, 'en_US.utf-8')
 
+locale.setlocale(locale.LC_ALL, 'en_US.utf-8')
 
 # argparser
 import time
 import argparse
+
 argparser = argparse.ArgumentParser()
 argparser.add_argument('--nlayer', default=12, type=int, help="layer of bert to extract")
 argparser.add_argument('--save_fn', default="", type=str, help="filename to save bert embeddings")
@@ -30,9 +31,8 @@ args = argparser.parse_args()
 import torch
 from pytorch_transformers import *
 
-device = torch.device("cuda:{}".format(args.device) if int(args.device)>=0 else "cpu")
+device = torch.device("cuda:{}".format(args.device) if int(args.device) >= 0 else "cpu")
 print("using device:", device)
-
 
 """ Helper Class to Extract Contextualised Word Embeddings from a Document. 
 
@@ -55,8 +55,8 @@ class BertWordFromTextEncoder:
         self.device = device
         self.sent_tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
         self.model, self.bert_tokenizer = self.load_bert_models()
-        self.w2vb = {} #embeds_sum
-        self.w2vc = {} #counts
+        self.w2vb = {}  # embeds_sum
+        self.w2vc = {}  # counts
         self.compounds = set()
         self.agg_by = ""
         self.use_full_vocab = False
@@ -81,29 +81,28 @@ class BertWordFromTextEncoder:
         last_hidden_states = self.model(input_ids)[0][0]
         print("Bert models are working fine\n")
 
-
     def load_bert_models(self):
         model_class = BertModel
         tokenizer_class = BertTokenizer
         pretrained_weights = 'bert-base-uncased'
         tokenizer = tokenizer_class.from_pretrained(pretrained_weights)
         model = model_class.from_pretrained(pretrained_weights,
-                output_hidden_states=True).to(self.device)
+                                            output_hidden_states=True).to(self.device)
 
         return model, tokenizer
-    
+
     def _add_word(self, compound_word, compound_ixs, embeds):
 
         word = "".join(compound_word).lower()
 
-        if self.agg_by=="firstword":
-            w = compound_ixs[0] 
+        if self.agg_by == "firstword":
+            w = compound_ixs[0]
             emb = embeds[w]
-        elif self.agg_by=="average":
+        elif self.agg_by == "average":
             total_emb = 0
             for w in compound_ixs:
                 total_emb += embeds[w]
-            emb = total_emb/len(compound_ixs)
+            emb = total_emb / len(compound_ixs)
 
         emb = emb.cpu().detach().numpy()
 
@@ -113,7 +112,7 @@ class BertWordFromTextEncoder:
             if word not in self.valid_vocab:
                 return
 
-        if len(compound_ixs)>1:
+        if len(compound_ixs) > 1:
             self.compounds.add(word)
 
         if word in self.w2vb:
@@ -128,18 +127,18 @@ class BertWordFromTextEncoder:
 
         all_vecs = []
         for word in self.w2vb:
-            #word = word.encode('utf-8', 'ignore').decode('utf-8')
+            # word = word.encode('utf-8', 'ignore').decode('utf-8')
 
-            mean_vector = np.around(self.w2vb[word]/self.w2vc[word], 8)
+            mean_vector = np.around(self.w2vb[word] / self.w2vc[word], 8)
             vect = np.append(word, mean_vector)
             all_vecs.append(vect)
 
-        #np.savetxt(f'embeds/bert_embeddings{i}-layer{args.layer}.txt', all_vecs, fmt = '%s', delimiter=" ")
+        # np.savetxt(f'embeds/bert_embeddings{i}-layer{args.layer}.txt', all_vecs, fmt = '%s', delimiter=" ")
 
-        np.savetxt(save_fn, np.vstack(all_vecs), fmt = '%s', delimiter=" ", encoding='utf-8')
+        np.savetxt(save_fn, np.vstack(all_vecs), fmt='%s', delimiter=" ", encoding='utf-8')
         print(f"{len(all_vecs)} vectors saved to {save_fn}")
         print(f"{len(self.compounds)} compound words saved to: compound_words.txt")
-        
+
         with open('compound_words.txt', 'w') as f:
             f.write("\n".join(list(self.compounds)))
 
@@ -148,18 +147,18 @@ class BertWordFromTextEncoder:
     def encode_docs(self, docs=[], agg_by="firstword", save_fn="", layer=12):
         self.agg_by = agg_by
 
-        if len(save_fn)==0:
+        if len(save_fn) == 0:
             save_fn = f"{args.data}-bert-layer{args.nlayer}-{agg_by}.txt"
             print(f"No save filename provided, saving to: {save_fn}")
 
         start = time.time()
-        with torch.no_grad(): 
+        with torch.no_grad():
             for i, doc in enumerate(docs):
-                if i%(int(len(docs)/100))==0:
+                if i % (int(len(docs) / 100)) == 0:
                     timetaken = np.round(time.time() - start, 1)
-                    print(f"{i+1}/{len(docs)} done, elapsed(s): {timetaken}")
+                    print(f"{i + 1}/{len(docs)} done, elapsed(s): {timetaken}")
                     sys.stdout.flush()
-                
+
                 # Assume a sentence as the window for contextualised embeddings.
                 sents = self.sent_tokenizer.tokenize(doc)
 
@@ -213,16 +212,15 @@ class BertWordFromTextEncoder:
 
                         for w, word in enumerate(words):
 
-
                             if word.startswith('##'):
-                                compound_word.append(word.replace('##',''))
+                                compound_word.append(word.replace('##', ''))
                                 compound_ixs.append(w)
 
 
                             else:
                                 # add the previous word
                                 # reset the compound word
-                                if w!=0:
+                                if w != 0:
                                     try:
                                         self._add_word(compound_word, compound_ixs, embeds)
                                     except:
@@ -231,7 +229,7 @@ class BertWordFromTextEncoder:
                                 compound_word = [word]
                                 compound_ixs = [w]
 
-                            if w == len(words)-1:
+                            if w == len(words) - 1:
                                 try:
                                     self._add_word(compound_word, compound_ixs, embeds)
                                 except:
@@ -239,18 +237,19 @@ class BertWordFromTextEncoder:
 
         self.eb_dump(save_fn)
 
+
 def init():
     """ Sample script """
 
     import preprocess
-    if args.use_stopwords==1:
+    if args.use_stopwords == 1:
         stopwords = set(line.strip() for line in open("stopwords_en.txt", encoding='utf-8'))
     else:
         stopwords = set()
 
     word_to_file = {}
     word_to_file, _, files = preprocess.get_dataset(dataset=args.data, type="train")
-    
+
     if args.use_full_vocab == 1:
         valid_vocab = -1
     else:
@@ -280,12 +279,11 @@ def sanity_check(fn):
         argmaxv = np.argmax(v)
         argminv = np.argmin(v)
 
-        #if (maxv > 2) or (minv < -2):
+        # if (maxv > 2) or (minv < -2):
         #    print(f"{words[i]} maxv: {maxv},{argmaxv} minv:{minv},{argminv}")
         if rangev > 10:
             print(f"{words[i]} range:{rangev}, maxv: {maxv},{argmaxv} minv:{minv},{argminv}")
- 
+
 
 if __name__ == "__main__":
     init()
-    

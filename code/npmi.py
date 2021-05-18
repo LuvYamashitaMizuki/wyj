@@ -1,24 +1,24 @@
 #!/usr/bin/python3
 
 # Standard imports
-#import random
+# import random
 import numpy as np
-#import pdb
+# import pdb
 import math
 import os, sys
 
 # argparser
 import argparse
 import pdb
-#from distutils.util import str2bool
+
+
+# from distutils.util import str2bool
 
 # Custom imports
 
 
-
 def average_npmi_topics(topic_words, ntopics, word_doc_counts, nfiles):
-
-    eps = 10**(-12)
+    eps = 10 ** (-12)
 
     all_topics = []
     for k in range(ntopics):
@@ -27,8 +27,8 @@ def average_npmi_topics(topic_words, ntopics, word_doc_counts, nfiles):
 
         ntopw = len(topic_words[k])
 
-        for i in range(ntopw-1):
-            for j in range(i+1, ntopw):
+        for i in range(ntopw - 1):
+            for j in range(i + 1, ntopw):
                 w1 = topic_words[k][i]
                 w2 = topic_words[k][j]
 
@@ -37,20 +37,20 @@ def average_npmi_topics(topic_words, ntopics, word_doc_counts, nfiles):
                 w2_dc = len(word_doc_counts.get(w2, set()))
 
                 # what we had previously:
-                #pmi_w1w2 = np.log(((w1w2_dc * nfiles) + eps) / ((w1_dc * w2_dc) + eps))
+                # pmi_w1w2 = np.log(((w1w2_dc * nfiles) + eps) / ((w1_dc * w2_dc) + eps))
 
                 # Correct eps:
                 pmi_w1w2 = np.log((w1w2_dc * nfiles) / ((w1_dc * w2_dc) + eps) + eps)
-                npmi_w1w2 = pmi_w1w2 / (- np.log( (w1w2_dc)/nfiles + eps))
+                npmi_w1w2 = pmi_w1w2 / (- np.log((w1w2_dc) / nfiles + eps))
 
                 # Sanity check Which is equivalent to this:
-                #if w1w2_dc ==0:
+                # if w1w2_dc ==0:
                 #    npmi_w1w2 = -1
-                #else:
-                    #pmi_w1w2 = np.log( (w1w2_dc * nfiles)/ (w1_dc*w2_dc))
-                    #npmi_w1w2 = pmi_w1w2 / (-np.log(w1w2_dc/nfiles))
+                # else:
+                # pmi_w1w2 = np.log( (w1w2_dc * nfiles)/ (w1_dc*w2_dc))
+                # npmi_w1w2 = pmi_w1w2 / (-np.log(w1w2_dc/nfiles))
 
-                #if npmi_w1w2>1 or npmi_w1w2<-1:
+                # if npmi_w1w2>1 or npmi_w1w2<-1:
                 #    print("NPMI score not bounded for:", w1, w2)
                 #    print(npmi_w1w2)
                 #    sys.exit(1)
@@ -60,9 +60,9 @@ def average_npmi_topics(topic_words, ntopics, word_doc_counts, nfiles):
         all_topics.append(np.mean(topic_score))
 
     for k in range(ntopics):
-        print(np.around(all_topics[k],5), " ".join(topic_words[k]))
+        print(np.around(all_topics[k], 5), " ".join(topic_words[k]))
 
     avg_score = np.around(np.mean(all_topics), 5)
-    #print(f"\nAverage NPMI for {ntopics} topics: {avg_score}")
+    # print(f"\nAverage NPMI for {ntopics} topics: {avg_score}")
 
     return avg_score

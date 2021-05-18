@@ -1,4 +1,4 @@
-#import gensim
+# import gensim
 import fasttext.util
 import fasttext
 import numpy as np
@@ -17,6 +17,7 @@ def create_id_dict(id2name):
         data[mapping[0]] = mapping[1]
     return data
 
+
 def read_entity_file(file, id_to_word, vocab, entities, elmomix=None):
     data = []
     word_index = {}
@@ -32,7 +33,7 @@ def read_entity_file(file, id_to_word, vocab, entities, elmomix=None):
                 embedding[0] = mapping[embedding[0]][1:]
             if embedding[0] in vocab:
                 word_index[embedding[0]] = index
-                index +=1
+                index += 1
                 if entities == "glove":
                     embedding = list(map(float, embedding[-300:]))
                 else:
@@ -40,7 +41,8 @@ def read_entity_file(file, id_to_word, vocab, entities, elmomix=None):
                 data.append(embedding)
     else:  # specify mixing coefficients for ELMo
         assert file[-1] in "012" and file[-7:-1] == ".layer"
-        with open(file[:-1] + "0") as f0, open(file[:-1] + "0") as f0, open(file[:-1] + "1") as f1, open(file[:-1] + "2") as f2:
+        with open(file[:-1] + "0") as f0, open(file[:-1] + "0") as f0, open(file[:-1] + "1") as f1, open(
+                file[:-1] + "2") as f2:
             for l0, l1, l2 in zip(f0, f1, f2):
                 e0 = l0.split()
                 e1 = l1.split()
@@ -53,12 +55,14 @@ def read_entity_file(file, id_to_word, vocab, entities, elmomix=None):
                     e2[0] = mapping[e2[0]][1:]
                 if e0[0] in vocab:
                     word_index[e0[0]] = index
-                    index +=1
-                    embedding = [elmomix[0] * float(x0) + elmomix[1] * float(x1) + elmomix[2] * float(x2) for x0, x1, x2 in zip(e0[1:], e1[1:], e2[1:])]
+                    index += 1
+                    embedding = [elmomix[0] * float(x0) + elmomix[1] * float(x1) + elmomix[2] * float(x2) for x0, x1, x2
+                                 in zip(e0[1:], e1[1:], e2[1:])]
                     data.append(embedding)
 
     print("KG: " + str(len(data)))
     return data, word_index
+
 
 def create_doc_to_word_emb(word_to_doc, file_num, word_list, dim):
     word_to_doc_matrix = np.zeros((len(word_list), file_num))
@@ -69,6 +73,7 @@ def create_doc_to_word_emb(word_to_doc, file_num, word_list, dim):
     trun_ftw = TruncatedSVD(n_components=dim).fit_transform(word_to_doc_matrix)
     return trun_ftw
 
+
 def find_intersect(word_index, vocab, data, files, type, add_doc):
     if add_doc == "DUP":
         return find_intersect_mult(word_index, vocab, data, type)
@@ -76,10 +81,11 @@ def find_intersect(word_index, vocab, data, files, type, add_doc):
         intersection, words_index_intersect = find_intersect_unique(word_index, vocab, data, type)
         u = create_doc_to_word_emb(vocab, files, words_index_intersect, 1000)
         u = preprocessing.scale(u)
-        #intersection = np.concatenate((intersection, u), axis=1)
+        # intersection = np.concatenate((intersection, u), axis=1)
         return u, words_index_intersect
     else:
         return find_intersect_unique(word_index, vocab, data, type)
+
 
 def find_intersect_unique(word_index, vocab, data, type):
     words = []
@@ -100,6 +106,7 @@ def find_intersect_unique(word_index, vocab, data, type):
 
     return vocab_embeddings, words
 
+
 def find_intersect_mult(word_index, vocab, data, type):
     words = []
     vocab_embeddings = []
@@ -119,8 +126,9 @@ def find_intersect_mult(word_index, vocab, data, type):
     vocab_embeddings = np.array(vocab_embeddings)
     return vocab_embeddings, words
 
+
 def create_entities_ft(model, train_word_to_file, doc_info):
-    #print("getting fasttext embeddings..")
+    # print("getting fasttext embeddings..")
     vocab_embeddings = []
     words = []
     intersection = set(train_word_to_file.keys())
@@ -133,44 +141,49 @@ def create_entities_ft(model, train_word_to_file, doc_info):
             vocab_embeddings.append(model.get_word_vector(word))
             words.append(word)
     vocab_embeddings = np.array(vocab_embeddings)
-    #print("complete..")
+    # print("complete..")
     return vocab_embeddings, words
-
 
 
 def get_weights_tf(vocab_list, weights):
     return np.array([len(weights[w]) for w in vocab_list])
 
+
 def get_rs_weights_tf(vocab_list, wghts):
-    weights  = get_weights_tf(vocab_list, wghts)
+    weights = get_weights_tf(vocab_list, wghts)
     transformer = RobustScaler().fit(get_weights_tf(vocab_list, wghts).reshape(-1, 1))
-    weight  = transformer.transform(weights.reshape(-1, 1))
-    x  = MinMaxScaler().fit(weight)
+    weight = transformer.transform(weights.reshape(-1, 1))
+    x = MinMaxScaler().fit(weight)
     weights = (x.transform(weight)).T.squeeze()
     return weights
 
+
 def get_weights_tfidf(vocab_list, weights):
     return [weights[w] for w in vocab_list]
+
+
 def get_weights_tfdf(vocab_list, word_file_count, files_num):
     count = np.array(get_weights_tf(vocab_list, word_file_count))
-    tf = count/np.sum(count)
+    tf = count / np.sum(count)
 
     df = np.array([len(np.unique(word_file_count[w])) for w in vocab_list])
-    df = df/files_num
+    df = df / files_num
 
     weights = tf * df
     print(weights.shape)
 
     tfdf = {}
     for i, w in enumerate(vocab_list):
-        tfdf[w]=weights[i]
+        tfdf[w] = weights[i]
 
     return weights, tfdf
+
+
 def get_tfidf_score(data, train_vocab):
     tf_idf_score = {}
 
-    tfidf_vectorizer=TfidfVectorizer(use_idf=True)
-    tfidf_vectorizer_vectors=tfidf_vectorizer.fit_transform(data)
+    tfidf_vectorizer = TfidfVectorizer(use_idf=True)
+    tfidf_vectorizer_vectors = tfidf_vectorizer.fit_transform(data)
 
     words = tfidf_vectorizer.get_feature_names()
     total_tf_idf = tfidf_vectorizer_vectors.toarray().sum(axis=0)
